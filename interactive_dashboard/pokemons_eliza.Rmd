@@ -8,52 +8,83 @@ runtime: shiny
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(forcats)
+library(fmsb)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(data.table)
+library(tidyr)
+df = read.csv("Pokemon.csv")
 ```
 
-This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
 
-To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+## Density charts
 
-## Inputs and Outputs
+```{r, echo=FALSE}
+s <-  df %>%
+  group_by(Type.1) %>%
+  count(name = "freq", sort=TRUE)
 
-You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+s$Type.1 = with(s, reorder(Type.1, freq, desc))
+p <- ggplot(s, aes(x = Type.1, y = freq)) +
+    geom_point(size=3, color="orange") +
+    geom_segment(aes(x=Type.1, xend=Type.1, y = 0, yend=freq))
 
-```{r eruptions, echo=FALSE}
+ggplotly(p)
+```
+
+```{r, echo = FALSE}
+
 inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
-)
+  selectInput("name", label = "Choose your pokemon:",
+              choices = df$Name, selected = "Bulbasaur"))
 
 renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
-  
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
+name = as.character(input$name)
+
+row <- df[df$Name == name, ] %>%
+  select(Defense, Attack, Sp..Atk, Sp..Def, Speed)
+row <- rbind(rep(200, 4), rep(0, 4), row)
+
+radarchart(row, axistype=1, pcol=rgb(0.2,0.5,0.5,0.9) , pfcol=rgb(0.2,0.5,0.5,0.5), plwd=3, cglcol="grey", cglty=1, axislabcol="grey", caxislabels=seq(0, 200, 50), cglwd=0.8)
+
 })
+
+
 ```
 
-## Embedded Application
+```{r, echo = FALSE} 
+#sidebarLayout(
+  #sidebarPanel,
+  #mainPanel,
+  #position = c("left", "right"),
+  #fluid = TRUE
+#)
 
-It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+inputPanel(
+  selectizeInput("names", label = "Choose pokemons to compare:", choices = df$Name, selected = NULL, options = list(maxItems = 2, placeholder = "Choose 2 pokemons")))
 
-```{r tabsets, echo=FALSE}
-shinyAppDir(
-  system.file("examples/06_tabsets", package = "shiny"),
-  options = list(
-    width = "100%", height = 550
-  )
-)
+renderPlot({
+name1 = as.character(input$names, 0)
+name2 = as.character(input$names, 1)
+rows <- df[df$Name %in% c(name1, name2), ] %>%
+  select(Name, Defense, Attack, Sp..Atk, Sp..Def, Speed, HP)
+rows_t <- transpose(rows[, 2:7])  
+colnames(rows_t) <- rows$Name
+rows_t$Attribute = colnames(rows)[2:7]
+
+data_long <- gather(rows_t, pokemon, value, name1:name2) %>%
+  arrange(factor(Attribute, levels = colnames(rows)[2:7])) %>% 
+  mutate(x=factor(Attribute, levels=unique(Attribute)))
+  
+  ggplot(data_long, aes(x = Attribute, y = ifelse(pokemon == name1, value, -value), fill = pokemon)) +
+    geom_bar(stat="identity", position="identity") +
+    coord_flip()
+})
+
+
 ```
-
-Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
-
-You can also use the `shinyApp` function to define an application inline rather then in an external directory.
-
-In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
 
 
 
