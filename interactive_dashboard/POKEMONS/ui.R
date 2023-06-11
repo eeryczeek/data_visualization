@@ -1,33 +1,47 @@
-#
-# This is the user-interface definition of a Shiny web application. You can
-# run the application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
+library(shinydashboard)
+library(DT)
 
-# Define UI for application that draws a histogram
-fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
+dashboardPage(
+    dashboardHeader(title = "Pokemon Dashboard"),
+    dashboardSidebar(),
+    dashboardBody(
+        fluidRow(
+            box(
+                width = 3,
+                DT::dataTableOutput("show_pokemon_data")
+            ),
+            box(
+                status = "warning", width = 6,
+                plotOutput("treemap")
+            ),
+            box(
+                width = 3,
+                plotOutput("pokemon_plot")
+            )
         ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-            plotOutput("distPlot")
+        fluidRow(
+            column(
+                width = 4,
+                box(
+                    width = NULL, solidHeader = TRUE, status = "primary",
+                    imageOutput("pokemon_image")
+                ),
+            ),
+            column(
+                width = 4,
+                box(
+                    width = NULL, solidHeader = TRUE, status = "warning",
+                    "Box content"
+                ),
+            ),
+            column(
+                width = 4,
+                box(
+                    width = NULL, solidHeader = TRUE,
+                    plotOutput("violin_plot")
+                ),
+            )
         )
     )
 )

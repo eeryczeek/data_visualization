@@ -1,0 +1,290 @@
+---
+title: "REPRODUCIBLE REPORT - LEGO"
+author: "Eliza Czaplicka, Eryk Ptaszyński"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: paper
+    toc: TRUE
+    toc_depth: 3
+    toc_float: TRUE
+---
+
+```{r, echo=FALSE}
+htmltools::img(src = knitr::image_uri("PP_logotyp_ANG_RGB.png"), alt = 'logo')
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(23)
+
+library(ggplot2)
+library(readr)
+library(tidyverse,warn.conflicts = FALSE)
+library(RColorBrewer)
+library(plotly)
+library(ggrepel)
+
+colors <- read.csv("rebrickable/colors.csv.gz")
+elements <- read.csv("rebrickable/elements.csv.gz")
+inventories <- read.csv("rebrickable/inventories.csv.gz")
+inventory_minifigs <- read.csv("rebrickable/inventory_minifigs.csv.gz")
+inventory_parts <- read.csv("rebrickable/inventory_parts.csv.gz")
+inventory_sets <- read.csv("rebrickable/inventory_sets.csv.gz")
+minifigs <- read.csv("rebrickable/minifigs.csv.gz")
+part_categories <- read.csv("rebrickable/part_categories.csv.gz")
+part_relationships <- read.csv("rebrickable/part_relationships.csv.gz")
+parts <- read.csv("rebrickable/parts.csv.gz")
+sets <- read.csv("rebrickable/sets.csv.gz")
+themes <- read.csv("rebrickable/themes.csv.gz")
+
+colnames(colors)[colnames(colors) == "name"] ="color_name"
+colors <- colors %>%
+    mutate(rgb=paste0("#", str_trim(rgb)))
+
+colnames(inventories)[colnames(inventories) == "id"] = "inventory_id"
+
+colnames(themes)[colnames(themes) == "name"] = "theme_name"
+
+options(warn=-1,message=-1)
+```
+
+
+# 1. COLORS
+
+The COLOR section of this report explores the fascinating world of colors within the Lego dataset. Lego sets are known for their vibrant and diverse color palettes, which play a crucial role in the aesthetics and overall appeal of these iconic building blocks. By analyzing the dataset, we aim to gain insights into the distribution and popularity of different colors over the years.
+
+With this exploration of Lego colors, we hope to uncover intriguing patterns, showcase the diverse range of options Lego enthusiasts have had throughout the years, and gain a deeper appreciation for the role that colors play in the world of Lego building. So let's dive in and discover the colorful world of Lego sets!
+
+```{R colors_setup, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+my_color <- colors$rgb
+names(my_color) <- my_color
+
+set_color <- sets %>%
+    left_join(inventories, by = "set_num") %>%
+    left_join(inventory_parts, by = "inventory_id") %>%
+    left_join(colors, by = c("color_id" = "id"))
+
+this_year <- format(Sys.Date(), "%Y")
+cyear <- as.numeric(this_year)
+
+num_colors <- length(unique(colors$name))
+```
+
+
+## 1.1. Unique LEGO colors released from 1949 onwards
+
+```{R colors1, echo=FALSE, message=FALSE, warning=FALSE}
+p <- set_color %>%
+    select(year, color_name, rgb) %>%
+    group_by(year, color_name, rgb) %>%
+    summarize(count = n()) %>%
+    arrange(desc(count)) %>%
+    ggplot(aes(x=year, y=1, fill=rgb, text = paste('num_of_elemets', count, '<br>', 'color_name:', color_name))) +
+        geom_bar(position = "fill", stat="identity") +
+        theme(legend.position="none") +
+        scale_fill_manual(values=my_color) +
+        labs(title="Unique Lego Colors from 1949", y="")
+
+ggplotly(p, tooltip = c("year", "text"))
+```
+
+"Unique Lego Colors from 1949" visualizes the distribution of Lego colors over the years. The y-axis represents every distinct lego color released in the corresponding year, and the x-axis represents the years from 1949 onwards. Each color is represented by a bar, filled with its corresponding RGB value. The height of each bar is unified and does not represent the proportion of pieces in this color with respect to all the others.
+
+
+## 1.2. Color distribution by themes
+
+```{R themes_setup, echo=FALSE, message=FALSE, warning=FALSE}
+theme_color <- themes %>%
+    left_join(sets, by = c("id" = "theme_id")) %>%
+    left_join(inventories, by = "set_num") %>%
+    left_join(inventory_parts, by = "inventory_id") %>%
+    left_join(colors, by = c("color_id" = "id"))
+
+theme_color_counts <- theme_color %>%
+    group_by(theme_name) %>%
+    summarize(count = n()) %>%
+    arrange(desc(count))
+
+top_themes <- head(unique(theme_color_counts$theme_name), 10)
+```
+
+```{R theme-color1, echo=FALSE, message=FALSE, warning=FALSE}
+theme_color <- theme_color[theme_color$theme_name %in% top_themes, ]
+
+theme_color %>%
+    select(theme_name, color_name, rgb) %>%
+    group_by(theme_name) %>%
+    ggplot(aes(x=1, y=theme_name, fill=rgb)) +
+        geom_bar(stat="identity", position="fill") +
+        theme(legend.position="none") +
+        scale_fill_manual(values=my_color) +
+        labs(title="Color distribution by themes", y="")
+```
+
+"Color distribution by themes" showcases the distribution of colors within the top 10 Lego themes. The y-axis displays the names of the themes, while the x-axis is a fixed scale. Each theme is represented by a bar, where the height of the bar corresponds to the proportion of colors used within that particular theme. The colors within each bar are filled according to their respective RGB values. The plot provides a visual understanding of how colors are distributed across different themes, highlighting any variations or preferences in color usage.
+
+By examining the color distribution by themes, we can gain insights into how different themes utilize colors and potentially identify any distinctive color patterns or preferences within specific Lego themes.
+
+
+# 2. THEMES
+
+The THEME section of the LEGO dataset report delves into the fascinating world of LEGO themes, exploring the rich diversity of sets offered by the iconic toy company. LEGO themes are distinct collections of sets that revolve around specific topics, such as space exploration, city life, or popular movie franchises. In this section, we present two key visualizations that shed light on the themes within the LEGO dataset: a treemap and a ranking of theme popularity.
+
+## 2.1. Top 50 themes by number of sets
+
+```{R theme_sets_grouped, echo=FALSE, message=FALSE, warning=FALSE}
+library(treemap)
+set_themes <- themes %>%
+    left_join(sets, by=c("id"="theme_id"))
+colnames(set_themes)[colnames(set_themes) == "id"] ="theme_id"
+
+themes_per_set <- set_themes %>%
+  select(theme_id, theme_name, set_num) %>%
+  group_by(theme_id, theme_name) %>%
+  summarise(set_cnt = length(unique(set_num))) %>%
+  arrange(desc(set_cnt)) %>%
+  head(50) %>%
+  mutate(parent_id = coalesce(themes$parent_id[match(theme_id, themes$id)], theme_id),
+         parent_name = themes$theme_name[match(parent_id, themes$id)]) %>%
+  select(parent_name, theme_name, set_cnt) %>%
+  group_by(parent_name)
+
+themes_per_set = themes_per_set[, !(names(themes_per_set) %in% c("theme_id"))]
+
+treemap(themes_per_set, index = c('parent_name'), palette = my_color, vSize = "set_cnt", type = "index", title = 'Top 50 themes by number of sets')
+```
+
+"Top 50 themes by number of sets" represents the hierarchical relationship between different themes based on the number of sets associated with each theme. The size of each tile in the treemap corresponds to the number of sets within that specific theme. The treemap provides an informative overview of the top 50 themes, their hierarchical structure, and the relative number of sets within each theme.
+
+## 2.2. Top 10 themes by number of new sets released
+
+```{R theme_sets, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create a dataframe of the top N themes by number of sets (merge themes into parent themes)
+N = 10
+
+# change themes in set themes to parent theme if there is one, sum up the number of sets for each theme
+
+new_set_themes <- set_themes %>%
+    mutate(theme_name = ifelse(is.na(parent_id), theme_name, themes$theme_name[match(parent_id, themes$id)])) %>%
+    select(set_num, year, theme_name) %>%
+    group_by(year, theme_name) %>%
+    summarize(count = n()) %>%
+    arrange(desc(count))
+
+# keep only the top N themes
+top_set_themes <- set_themes %>%
+    mutate(theme_name = ifelse(is.na(parent_id), theme_name, themes$theme_name[match(parent_id, themes$id)])) %>%
+    select(set_num, theme_name) %>%
+    group_by(theme_name) %>%
+    summarize(count = n()) %>%
+    arrange(desc(count)) %>%
+    head(N)
+
+# from new_set_themes, keep only the ones that are in top_set_themes$theme_name
+new_set_themes <- new_set_themes[new_set_themes$theme_name %in% top_set_themes$theme_name, ]
+
+# combine years into 10 year intervals and sum the number of sets for each theme in each interval
+theme_counts <- new_set_themes %>%
+    mutate(year = floor(year / 10) * 10) %>%
+    group_by(year, theme_name) %>%
+    summarize(count = sum(count)) %>%
+    ungroup() %>%
+    arrange(year, desc(count)) %>%
+    group_by(year) %>%
+    mutate(rank = row_number(desc(count))) %>%
+    filter(rank <= N) %>%
+    ungroup()
+
+# plot the data, color each theme differently, add legend, reverse the y axis
+p <- ggplot(theme_counts, aes(x = year, y = rank, color = theme_name)) +
+    geom_point() +
+    geom_line() +
+    scale_y_reverse() +
+    labs(title = paste("Top", N, "themes by number of sets"), x = "Year", y = "Rank")
+
+ggplotly(p, tooltip = c("year", "Rank", "theme_name"))
+```
+
+This plot represents the top N most popular themes ranked by the number of sets over a period of time. The x-axis represents the years, while the y-axis represents the rank of the themes based on the number of sets. Each theme is represented by a line and points on the plot.
+
+The plot shows the trend of theme rankings over time. The higher a theme is on the y-axis (lower rank), the more sets it has in that particular year. The color of each line and points represents a specific theme.
+
+Some years may not contain all 10 top themes. The theme is not present in a given year if it had no new sets released.
+
+
+# 3. PARTS
+
+The PARTS section of the LEGO dataset report delves into the intricate components that make up LEGO sets, offering insights into the variety and distribution of parts within the dataset. LEGO sets are renowned for their extensive assortment of parts, which allow builders to unleash their creativity and construct unique creations. In this section, we present two key analyses: the top sets by the number of parts and the distribution of parts grouped by years.
+
+## 3.1. Top 20 sets by number of parts
+
+```{R parts_sets_grouped, echo=FALSE, message=FALSE, warning=FALSE}
+# change name to set_name in set_themes
+set_themes <- set_themes %>% rename(set_name = name)
+
+# plot top N sets by number of parts on a line chart x axis = count, y axis = set_name arrange by count
+N = 20
+
+p <- set_themes %>%
+    select(set_name, num_parts) %>%
+    group_by(set_name) %>%
+    summarize(num_parts = sum(num_parts)) %>%
+    arrange(desc(num_parts)) %>%
+    head(N) %>%
+    ggplot(aes(x = num_parts, y = reorder(set_name, num_parts), fill = set_name)) +
+        geom_bar(stat = "identity") +
+        theme(legend.position = "none") +
+        labs(title = paste("Top", N, "sets by number of parts"), x = "Number of parts", y = "Set name")
+
+ggplotly(p, tooltip = c("set_name", "num_parts"))
+```
+
+This plot displays the top N sets by the number of parts they contain. The x-axis represents the count of parts, while the y-axis displays the set names. The sets are arranged on the y-axis in descending order based on the number of parts they have.
+
+Each set is represented by a bar in the plot, where the height of the bar corresponds to the total number of parts in that set. The plot provides an overview of the complexity or size of the sets based on the number of parts they include.
+
+
+## 3.2. Distribution of number of parts per year
+
+```{R parts_violin, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggbeeswarm)
+
+# Define the fraction of data to be shown
+violin_plot_data <- set_themes %>%
+  select(set_name, num_parts, year) %>%
+  mutate(year = floor(year / 10) * 10) %>%
+  group_by(set_name, year) %>%
+  summarize(num_parts = sum(num_parts))
+
+# Remove outliers from the data
+violin_plot_data <- violin_plot_data %>%
+  group_by(year) %>%
+  mutate(num_parts = ifelse(num_parts > quantile(num_parts, 0.85, na.rm = TRUE), NA, num_parts)) %>%
+  ungroup()
+
+# Define the fraction of data to be shown
+fraction_to_show <- 0.1
+
+# Split the data into two subsets: full_data and sampled_data
+full_data <- violin_plot_data
+sampled_data <- violin_plot_data %>%
+  group_by(year) %>%
+  sample_frac(fraction_to_show) %>%
+  ungroup()
+
+# plot the data using geom_violin and geom_beeswarm
+p <- ggplot() +
+  geom_quasirandom(data = sampled_data, aes(x = as.factor(year), y = num_parts, color = as.factor(year)), size = 1, alpha = 0.5, priority = "density") +
+  theme(legend.position = "none") +
+  labs(title = "Number of parts in sets over time", x = "Year", y = "Number of parts")
+
+ggplotly(p, tooltip = c("year", "num_parts"))
+```
+
+The plot visualizes the distribution of the number of parts in sets over time. Outliers in the data are removed by identifying values that exceed the 85th percentile within each year's distribution.
+
+To provide an overview of the dataset while managing the amount of data shown, a fraction of the data is randomly sampled to be displayed. The fraction to show is set to 10% of the original data, ensuring a representative sample. The sampled data is used for the subsequent visualization. The size and transparency of the points are adjusted to enhance readability and avoid visual clutter.
+
+The resulting plot provides an intuitive representation of the distribution of parts in sets over time, allowing for easy identification of trends or patterns in the dataset.
