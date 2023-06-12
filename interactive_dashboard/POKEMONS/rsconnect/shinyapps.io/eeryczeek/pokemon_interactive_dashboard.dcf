@@ -1,0 +1,13 @@
+name: pokemon_interactive_dashboard
+title: pokemon_interactive_dashboard
+username:
+account: eeryczeek
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9294349
+bundleId: 7335847
+url: https://eeryczeek.shinyapps.io/pokemon_interactive_dashboard/
+when: 1686596845.50747
+lastSyncTime: 1686596845.50748
+asMultiple: FALSE
+asStatic: FALSE
