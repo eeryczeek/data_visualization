@@ -11,7 +11,7 @@ function(input, output, session) {
     set.seed(23)
 
     # load pokemon data and fill in missing type 2 with type 1
-    pokemon_data <- read.csv("~/GitHub/data_visualization/interactive_dashboard/Pokemon.csv")
+    pokemon_data <- read.csv("data/Pokemon.csv")
 
     #custom colors for each pokemon type
     pokemon_colors <- c(
@@ -148,7 +148,7 @@ function(input, output, session) {
             selected_pokemon_data <- pokemon_data[selected_pokemons(), ]
             name <- selected_pokemon_data$Name
             # return the image from archive/images/images directory
-            pokemon_image <- list(src = paste0("archive/images/images/", tolower(name), ".png"),
+            pokemon_image <- list(src = paste0("data/images/", tolower(name), ".png"),
                                   contentType = "image/png",
                                   width = 256,
                                   height = 256,
