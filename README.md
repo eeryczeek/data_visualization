@@ -1,5 +1,7 @@
 application deployed at: https://eeryczeek.shinyapps.io/pokemon_interactive_dashboard/
 
+![alt text](https://github.com/eeryczeek/data_visualization/blob/main/interactive_dashboard/DashboardSketch.jpeg?raw=true)
+
 # Plot description
 ## Pokemon Data Table
 The "Pokemon Data Table" plot displays a table of Pokemon names. It allows you to select a row and view details about the selected Pokemon.
