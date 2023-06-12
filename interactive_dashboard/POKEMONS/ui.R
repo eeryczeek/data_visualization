@@ -1,10 +1,11 @@
 library(shiny)
 library(shinydashboard)
 library(DT)
+library(plotly)
 
 dashboardPage(
     dashboardHeader(title = "Pokemon Dashboard"),
-    dashboardSidebar(),
+    dashboardSidebar(disable = TRUE),
     dashboardBody(
         fluidRow(
             box(
@@ -13,7 +14,7 @@ dashboardPage(
             ),
             box(
                 status = "warning", width = 6,
-                plotOutput("treemap")
+                imageOutput("pokemon_image")
             ),
             box(
                 width = 3,
@@ -22,21 +23,14 @@ dashboardPage(
         ),
         fluidRow(
             column(
-                width = 4,
+                width = 7,
                 box(
                     width = NULL, solidHeader = TRUE, status = "primary",
-                    imageOutput("pokemon_image")
+                    plotlyOutput("interactive_treemap")
                 ),
             ),
             column(
-                width = 4,
-                box(
-                    width = NULL, solidHeader = TRUE, status = "warning",
-                    "Box content"
-                ),
-            ),
-            column(
-                width = 4,
+                width = 5,
                 box(
                     width = NULL, solidHeader = TRUE,
                     plotOutput("violin_plot")

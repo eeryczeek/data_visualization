@@ -114,3 +114,27 @@ data_long <- gather(rows_t, pokemon, value, name1:name2) %>%
 
 
 
+```{r}
+pokemon_data <- read.csv("~/GitHub/data_visualization/interactive_dashboard/Pokemon.csv")
+
+pokemon_data %>%
+  group_by(Type.1, Type.2) %>%
+  summarise(count = n()) %>%
+  plot_ly(
+    parents = ~Type.1,
+    labels = ~Type.2,
+    values = ~count,
+    type = "treemap",
+    colors = pokemon_colors,
+    hovertemplate = paste(
+        "<b>%{label}</b><br>",
+        "Count: %{value}<br>"
+    )
+  ) %>%
+  layout(
+    title = "pokemon type distribution",
+    font = list(size = 15),
+    margin = list(l = 0, r = 0, b = 0, t = 50),
+    treemapcolorway = pokemon_colors
+  )
+```
